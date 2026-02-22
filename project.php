@@ -73,7 +73,7 @@ task('deploy:supervisor', function () {
     set('remote_user', get('provision_user'));
 
     // 2. Diff and Update Configuration
-    $workerConf = parse(file_get_contents(__DIR__ . '/worker.conf'));
+    $workerConf = parse(file_get_contents(__DIR__ . '/supervisor/worker.conf'));
     $workerPath = '/etc/supervisor/conf.d/{{domain}}-worker.conf';
 
     if (test("[ -f $workerPath ]")) {

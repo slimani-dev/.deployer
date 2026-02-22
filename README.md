@@ -4,9 +4,19 @@ This repository contains modular Deployer scripts for provisioning servers and d
 
 ## Installation into a Project
 
-1. Clone or add this repository as a submodule to your Laravel project, typically naming the folder `.deployer`.
-2. Copy the `deploy.php.example` file to the root of your Laravel project and rename it to `deploy.php`.
-3. Update the `deploy.php` configuration block with your repository, domain, server IP, and secrets.
+The best way to use these scripts is to add this repository as a git submodule to your Laravel project. Run the following command from the root of your project:
+
+```bash
+git submodule add git@github.com:slimani-dev/.deployer.git .deployer
+```
+
+Next, copy the `deploy.php.example` file to the root of your Laravel project:
+
+```bash
+cp .deployer/deploy.php.example deploy.php
+```
+
+Finally, open `deploy.php` in your editor and update the configuration block with your repository, domain, server IP, and secrets.
 
 ### ⚠️ Security & Git Guidelines
 You **MUST** add the following to your root project's `.gitignore` file to avoid leaking credentials:

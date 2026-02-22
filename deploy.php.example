@@ -1,0 +1,43 @@
+<?php
+
+namespace Deployer;
+
+require 'recipe/laravel.php';
+require '.deployer/logs.php';
+require '.deployer/project.php';
+require '.deployer/server.php';
+
+// Config
+set('repository', 'git@github.com:your-organization/your-repo.git');
+
+add('shared_files', []);
+add('shared_dirs', []);
+add('writable_dirs', []);
+
+// Hosts
+host('203.0.113.10') // Replace with your server IP or domain
+    ->set('remote_user', 'deployer')
+    ->set('sudo_password', 'your-secure-sudo-password') // Needed for initial provision
+    ->set('deploy_path', '/var/www/my-app')
+    ->set('domain', 'my-app.com')
+    ->set('public_path', 'public')
+    ->set('php_version', '8.3')
+    
+    // Database Config
+    ->set('db_type', 'mysql')
+    ->set('db_user', 'app_db_user')
+    ->set('db_name', 'app_db_name')
+    ->set('db_password', 'your-secure-db-password')
+    
+    // Garage S3 Config
+    ->set('garage_version', 'v2.2.0')
+    ->set('garage_bucket', 'my-app-assets')
+    ->set('garage_user', 'my-app-api')
+    ->set('garage_domain', 's3.my-app.com')
+    
+    // Node
+    ->set('node_version', '22')
+    ->set('keep_releases', 3);
+
+// Hooks
+after('deploy:failed', 'deploy:unlock');

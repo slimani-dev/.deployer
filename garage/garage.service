@@ -1,0 +1,21 @@
+[Unit]
+Description=Garage Object Storage
+Documentation=https://garagehq.deuxfleurs.fr/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment="RUST_LOG=info"
+ExecStart=/usr/local/bin/garage server
+Restart=always
+RestartSec=3
+
+# Run as root since we are managing directories in /var/lib/garage
+User=root
+Group=root
+
+# Security limits (Garage can open many files during large data transfers)
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -76,6 +76,8 @@ task('deploy:supervisor', function () {
     $workerConf = parse(file_get_contents(__DIR__ . '/supervisor/worker.conf'));
     $workerPath = '/etc/supervisor/conf.d/{{domain}}-worker.conf';
 
+    run('mkdir -p /etc/supervisor/conf.d');
+
     if (test("[ -f $workerPath ]")) {
         run("echo \"$workerConf\" > /tmp/worker.conf.new");
         $diff = run("diff -U5 --color=always $workerPath /tmp/worker.conf.new", no_throw: true);

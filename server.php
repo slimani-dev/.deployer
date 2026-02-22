@@ -257,19 +257,24 @@ task('provision:puppeteer', function () {
     $npxCmd = 'export PUPPETEER_CACHE_DIR=/var/www/.cache/puppeteer; pnpm dlx @puppeteer/browsers install chrome@140.0.7339.82';
     run("cd /var/www/.cache/puppeteer && bash -l -c '$npxCmd'");
 
-    // 4. Ensure permissions for www-data (and deployer)
+    // 4. Create a global symlink for a shorter, cleaner path
+    $longChromePath = '/var/www/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome';
+    $shortChromePath = '/usr/bin/puppeteer-chrome';
+    info("Creating symlink from $shortChromePath to the Chrome binary...");
+    run("ln -sf $longChromePath $shortChromePath");
+
+    // 5. Ensure permissions for www-data (and deployer)
     info('Setting permissions so www-data can execute Chrome...');
     run('chown -R www-data:www-data /var/www/.cache');
     run('chmod -R 775 /var/www/.cache');
 
-    // 4. Inject Environment Variable
+    // 6. Inject Environment Variable using the short path
     $envFile = '{{deploy_path}}/shared/.env';
-    $chromePath = '/var/www/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome';
 
     if (test("[ -f $envFile ]")) {
         run("grep -q '^CHROME_PATH=' $envFile && ".
-            "sed -i 's|^CHROME_PATH=.*|CHROME_PATH=$chromePath|' $envFile || ".
-            "echo 'CHROME_PATH=$chromePath' >> $envFile");
+            "sed -i 's|^CHROME_PATH=.*|CHROME_PATH=$shortChromePath|' $envFile || ".
+            "echo 'CHROME_PATH=$shortChromePath' >> $envFile");
         info('Injected CHROME_PATH into .env');
     } else {
         warning("Could not find $envFile to inject CHROME_PATH. Run deploy:shared first or add it manually.");
@@ -297,7 +302,7 @@ task('provision:website', function () {
     run("chmod g+s $absolutePath/log"); // New files in log inherit www-data group
 
     // 3. Nginx Configuration Logic (Your diffing logic is great, kept as is)
-    $nginxConf = parse(file_get_contents(__DIR__ . '/nginx.conf'));
+    $nginxConf = parse(file_get_contents(__DIR__.'/nginx.conf'));
     $nginxPath = '/etc/nginx/sites-available/{{domain}}.conf';
     $nginxEnablePath = '/etc/nginx/sites-enabled/{{domain}}.conf';
 
@@ -421,7 +426,7 @@ task('provision:garage', function () {
 
     // 4. Manage Garage Secrets (Persistent local storage)
     // We generate these once and load them into Deployer's memory so {{placeholders}} work
-    $secretsFile = getcwd() . '/' . $localConfigPath . '/secrets.json';
+    $secretsFile = getcwd().'/'.$localConfigPath.'/secrets.json';
     if (file_exists($secretsFile)) {
         $secrets = json_decode(file_get_contents($secretsFile), true);
         foreach ($secrets as $key => $value) {
@@ -443,30 +448,33 @@ task('provision:garage', function () {
     // 5. Smart Sync Helper Function
     $sync = function ($local, $remote) {
         $content = parse(file_get_contents($local));
-        $tmp = "/tmp/" . basename($remote) . ".new";
-        run("echo " . escapeshellarg($content) . " > $tmp");
+        $tmp = '/tmp/'.basename($remote).'.new';
+        run('echo '.escapeshellarg($content)." > $tmp");
 
         if (test("[ -f $remote ]")) {
             $diff = run("diff -U5 --color=always $remote $tmp", no_throw: true);
-            if (!empty($diff)) {
-                info("Changes detected in " . basename($remote));
-                writeln("\n" . $diff);
-                if (askChoice(" Update " . basename($remote) . "? ", ['old', 'new'], 1) === 'new') {
+            if (! empty($diff)) {
+                info('Changes detected in '.basename($remote));
+                writeln("\n".$diff);
+                if (askChoice(' Update '.basename($remote).'? ', ['old', 'new'], 1) === 'new') {
                     run("mv $tmp $remote");
+
                     return true;
                 }
             }
             run("rm $tmp");
         } else {
             run("mv $tmp $remote");
+
             return true;
         }
+
         return false;
     };
 
     // 6. Update Configurations
-    $configChanged = $sync("$localConfigPath/garage.toml", "/etc/garage.toml");
-    $serviceChanged = $sync("$localConfigPath/garage.service", "/etc/systemd/system/garage.service");
+    $configChanged = $sync("$localConfigPath/garage.toml", '/etc/garage.toml');
+    $serviceChanged = $sync("$localConfigPath/garage.service", '/etc/systemd/system/garage.service');
 
     if ($configChanged || $serviceChanged) {
         run('systemctl daemon-reload');
@@ -475,12 +483,12 @@ task('provision:garage', function () {
     }
 
     // 7. Nginx Proxy Configuration
-    $nginxPath = "/etc/nginx/sites-available/{{garage_domain}}.conf";
-    $nginxEnablePath = "/etc/nginx/sites-enabled/{{garage_domain}}.conf";
+    $nginxPath = '/etc/nginx/sites-available/{{garage_domain}}.conf';
+    $nginxEnablePath = '/etc/nginx/sites-enabled/{{garage_domain}}.conf';
 
     if ($sync("$localConfigPath/nginx.conf", $nginxPath)) {
         run("ln -sf $nginxPath $nginxEnablePath");
-        run("nginx -t && service nginx reload");
+        run('nginx -t && service nginx reload');
     }
 
     // 8. Local DNS routing for Laravel to talk to Garage directly

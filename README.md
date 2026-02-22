@@ -41,7 +41,18 @@ The entire infrastructure setup and code rollout is handled in just two commands
 ```bash
 dep provision
 ```
-This command installs all required packages (PHP, Node, Nginx, Redis, Supervisor, Garage, Chrome/Puppeteer), sets up the deployer user, applies permissions, and provides you with the SSH deploy key to add to your Git repository holding your Laravel code.
+This command installs all required packages (PHP, Node, Nginx, Redis, Supervisor, Garage, Chrome/Puppeteer), sets up the `deployer` user, and applies permissions.
+
+At the very end of this process, the script will output a public SSH key, which looks similar to this:
+```
+================= GIT DEPLOY KEY =================
+Copy the following key and add it to your Git repository (GitHub/GitLab) Deploy Keys:
+
+ssh-ed25519 AAAAC3NzaC1lZT....... root@YourServer
+
+==================================================
+```
+**CRITICAL:** You must copy this public key and add it to your project's repository settings as a **Deploy Key** (or to your personal Git account) before running `dep deploy`, otherwise the server will be rejected when trying to clone your code!
 
 ### 2. Deploy the Project
 

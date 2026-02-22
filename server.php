@@ -302,7 +302,7 @@ task('provision:website', function () {
     run("chmod g+s $absolutePath/log"); // New files in log inherit www-data group
 
     // 3. Nginx Configuration Logic (Your diffing logic is great, kept as is)
-    $nginxConf = parse(file_get_contents(__DIR__.'/nginx.conf'));
+    $nginxConf = parse(file_get_contents(__DIR__.'/nginx/nginx.conf'));
     $nginxPath = '/etc/nginx/sites-available/{{domain}}.conf';
     $nginxEnablePath = '/etc/nginx/sites-enabled/{{domain}}.conf';
 

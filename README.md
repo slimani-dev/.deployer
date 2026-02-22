@@ -78,6 +78,12 @@ This command pulls the code, installs PHP and JS vendors, maps `.env` variables,
 #### First-Run Checklist
 Because the `.env` file is generated from your `.env.example`, make sure your `.env.example` is fully filled out with the structural defaults your application expects! 
 
+**Crucial Environment Settings:**
+Before your app goes live, verify the copied `.env` file has these fundamental production values:
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://your-domain.com`
+
 After your very first deploy finishes, you should manually generate the application key and cache:
 
 ```bash

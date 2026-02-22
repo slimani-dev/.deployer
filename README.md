@@ -32,6 +32,20 @@ To provision a brand new server, you only need exactly two things:
 1. **Root user access** to the target destination.
 2. **SSH keys** properly configured for the root user.
 
+You will also need **Deployer** installed on your local machine.
+
+**Global Installation (Recommended):**
+```bash
+composer global require deployer/deployer
+```
+*You can then run commands simply using `dep provision`.*
+
+**Local Installation:**
+```bash
+composer require deployer/deployer --dev
+```
+*If installed locally, you must prefix commands with your vendor binary: `vendor/bin/dep provision`.*
+
 ## Deployment Workflow
 
 The entire infrastructure setup and code rollout is handled in just two commands. Run these from your local machine.

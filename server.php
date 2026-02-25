@@ -21,6 +21,7 @@ task('provision', [
     'provision:redis',
     'provision:server',
     'provision:puppeteer',
+    'provision:supervisor',
     'provision:garage',
     'provision:website',
     'provision:verify',
@@ -71,6 +72,7 @@ task('provision:install', function () {
         'unzip',
         'uuid-runtime',
         'whois',
+        'vim',
     ];
     run('apt-get install -y '.implode(' ', $packages), ['env' => ['DEBIAN_FRONTEND' => 'noninteractive'], 'timeout' => 900]);
 })
@@ -173,8 +175,11 @@ task('provision:node', function () {
     run("bash -l -c 'corepack prepare pnpm@latest --activate'");
 
     // Ensure the deployer user can write to the global npm/pnpm/corepack caches
+    // Use setgid (g+s) so new subdirectories (like v1/) inherit the group
+    // Also use 777 so regardless of sudo group context resets, pnpm can write its cache
     run("chown -R root:www-data $fnmDir $corepackDir");
-    run("chmod -R 775 $fnmDir $corepackDir");
+    run("chmod -R 777 $fnmDir $corepackDir");
+    run("find $corepackDir -type d -exec chmod g+s {} +");
 
     // Final verification
     $nodeV = run("bash -l -c 'node -v'");

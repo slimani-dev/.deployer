@@ -14,7 +14,7 @@ task('deploy:livewire:storage', function () {
 desc('pnpm install and build');
 task('deploy:build', function () {
     become(('{{remote_user}}'));
-    run('cd {{current_path}} && pnpm install && pnpm run build');
+    run('source /etc/profile.d/fnm.sh && cd {{current_path}} && pnpm install && pnpm run build');
 });
 
 desc('Publish Livewire assets');
@@ -36,7 +36,7 @@ task('deploy', [
     'deploy:build',
     'deploy:livewire:storage',
     'deploy:supervisor',
-    'deploy:garage',
+    //'deploy:garage',
 ]);
 
 desc('Syncs database credentials to .env');

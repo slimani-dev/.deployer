@@ -22,7 +22,6 @@ task('provision', [
     'provision:server',
     'provision:puppeteer',
     'provision:supervisor',
-    'provision:garage',
     'provision:website',
     'provision:verify',
 ]);
@@ -399,106 +398,60 @@ task('provision:supervisor', function () {
     run('systemctl start supervisor');
 })->oncePerNode();
 
-desc('Installs and configures Garage S3 (Root-only with Arch Detection)');
-task('provision:garage', function () {
-    set('remote_user', 'root');
-    $localConfigPath = '.deployer/garage';
 
-    // 1. Detect Architecture
-    $arch = run('uname -m');
-    if ($arch === 'x86_64') {
-        $target = 'x86_64-unknown-linux-musl';
-    } elseif ($arch === 'aarch64' || $arch === 'arm64') {
-        $target = 'aarch64-unknown-linux-musl';
-    } elseif (str_contains($arch, 'arm')) {
-        $target = 'armv6l-unknown-linux-musleabihf';
-    } elseif ($arch === 'i686' || $arch === 'i386') {
-        $target = 'i686-unknown-linux-musl';
-    } else {
-        throw new \Exception("Unsupported architecture: $arch");
-    }
+desc('Installs PHP packages');
+task('provision:php', function () {
+    set('remote_user', get('provision_user'));
 
-    // 2. Install Garage Binary
-    $version = get('garage_version');
-    $url = "https://garagehq.deuxfleurs.fr/_releases/$version/$target/garage";
+    $version = get('php_version');
+    info("Installing PHP $version");
+    $packages = [
+        "php$version-bcmath",
+        "php$version-cli",
+        "php$version-curl",
+        "php$version-dev",
+        "php$version-fpm",
+        "php$version-gd",
+        "php$version-imap",
+        "php$version-intl",
+        "php$version-mbstring",
+        "php$version-mysql",
+        "php$version-pgsql",
+        "php$version-readline",
+        "php$version-soap",
+        "php$version-sqlite3",
+        "php$version-xml",
+        "php$version-zip",
+        "php$version-imagick",
+        "php$version-opentelemetry",
+    ];
+    run('apt-get install -y ' . implode(' ', $packages), ['env' => ['DEBIAN_FRONTEND' => 'noninteractive']]);
 
-    run("wget -qO /tmp/garage $url");
-    run('mv /tmp/garage /usr/local/bin/garage');
-    run('chmod +x /usr/local/bin/garage');
+    // Configure PHP-CLI
+    run("sed -i 's/error_reporting = .*/error_reporting = E_ALL/' /etc/php/$version/cli/php.ini");
+    run("sed -i 's/display_errors = .*/display_errors = On/' /etc/php/$version/cli/php.ini");
+    run("sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php/$version/cli/php.ini");
+    run("sed -i 's/upload_max_filesize = .*/upload_max_filesize = 128M/' /etc/php/$version/cli/php.ini");
+    run("sed -i 's/;date.timezone.*/date.timezone = UTC/' /etc/php/$version/cli/php.ini");
 
-    // 3. Prepare Storage Folders (Avoid /tmp/)
-    run('mkdir -p /var/lib/garage/meta /var/lib/garage/data');
+    // Configure PHP-FPM
+    run("sed -i 's/error_reporting = .*/error_reporting = E_ALL/' /etc/php/$version/fpm/php.ini");
+    run("sed -i 's/display_errors = .*/display_errors = On/' /etc/php/$version/fpm/php.ini");
+    run("sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php/$version/fpm/php.ini");
+    run("sed -i 's/upload_max_filesize = .*/upload_max_filesize = 128M/' /etc/php/$version/fpm/php.ini");
+    run("sed -i 's/;date.timezone.*/date.timezone = UTC/' /etc/php/$version/fpm/php.ini");
+    run("sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/$version/fpm/php.ini");
 
-    // 4. Manage Garage Secrets (Persistent local storage)
-    // We generate these once and load them into Deployer's memory so {{placeholders}} work
-    $secretsFile = getcwd().'/'.$localConfigPath.'/secrets.json';
-    if (file_exists($secretsFile)) {
-        $secrets = json_decode(file_get_contents($secretsFile), true);
-        foreach ($secrets as $key => $value) {
-            set($key, $value);
-        }
-    } else {
-        $secrets = [
-            'garage_rpc_secret' => bin2hex(random_bytes(32)),
-            'garage_admin_token' => base64_encode(random_bytes(32)),
-            'garage_metrics_token' => base64_encode(random_bytes(32)),
-        ];
-        file_put_contents($secretsFile, json_encode($secrets, JSON_PRETTY_PRINT));
-        foreach ($secrets as $key => $value) {
-            set($key, $value);
-        }
-        info("Auto-generated new Garage secrets and saved to $localConfigPath/secrets.json. Please commit this file to Git!");
-    }
+    // Configure FPM Pool
+    run("sed -i 's/;request_terminate_timeout = .*/request_terminate_timeout = 60/' /etc/php/$version/fpm/pool.d/www.conf");
+    run("sed -i 's/;catch_workers_output = .*/catch_workers_output = yes/' /etc/php/$version/fpm/pool.d/www.conf");
+    run("sed -i 's/;php_flag\[display_errors\] = .*/php_flag[display_errors] = yes/' /etc/php/$version/fpm/pool.d/www.conf");
+    run("sed -i 's/;php_admin_value\[error_log\] = .*/php_admin_value[error_log] = \/var\/log\/fpm-php.www.log/' /etc/php/$version/fpm/pool.d/www.conf");
+    run("sed -i 's/;php_admin_flag\[log_errors\] = .*/php_admin_flag[log_errors] = on/' /etc/php/$version/fpm/pool.d/www.conf");
 
-    // 5. Smart Sync Helper Function
-    $sync = function ($local, $remote) {
-        $content = parse(file_get_contents($local));
-        $tmp = '/tmp/'.basename($remote).'.new';
-        run('echo '.escapeshellarg($content)." > $tmp");
-
-        if (test("[ -f $remote ]")) {
-            $diff = run("diff -U5 --color=always $remote $tmp", no_throw: true);
-            if (! empty($diff)) {
-                info('Changes detected in '.basename($remote));
-                writeln("\n".$diff);
-                if (askChoice(' Update '.basename($remote).'? ', ['old', 'new'], 1) === 'new') {
-                    run("mv $tmp $remote");
-
-                    return true;
-                }
-            }
-            run("rm $tmp");
-        } else {
-            run("mv $tmp $remote");
-
-            return true;
-        }
-
-        return false;
-    };
-
-    // 6. Update Configurations
-    $configChanged = $sync("$localConfigPath/garage.toml", '/etc/garage.toml');
-    $serviceChanged = $sync("$localConfigPath/garage.service", '/etc/systemd/system/garage.service');
-
-    if ($configChanged || $serviceChanged) {
-        run('systemctl daemon-reload');
-        run('systemctl enable garage');
-        run('systemctl restart garage');
-    }
-
-    // 7. Nginx Proxy Configuration
-    $nginxPath = '/etc/nginx/sites-available/{{garage_domain}}.conf';
-    $nginxEnablePath = '/etc/nginx/sites-enabled/{{garage_domain}}.conf';
-
-    if ($sync("$localConfigPath/nginx.conf", $nginxPath)) {
-        run("ln -sf $nginxPath $nginxEnablePath");
-        run('nginx -t && service nginx reload');
-    }
-
-    // 8. Local DNS routing for Laravel to talk to Garage directly
-    $garageDomain = get('garage_domain');
-    run("grep -q '$garageDomain' /etc/hosts || echo '127.0.0.1 $garageDomain' >> /etc/hosts");
-
-    info("Garage S3 $version provisioned at {{garage_domain}}");
-})->oncePerNode();
+    // Configure PHP sessions directory
+    run('chmod 733 /var/lib/php/sessions');
+    run('chmod +t /var/lib/php/sessions');
+})
+    ->verbose()
+    ->limit(1);

@@ -14,7 +14,7 @@ task('deploy:livewire:storage', function () {
 desc('pnpm install and build');
 task('deploy:build', function () {
     run('sudo chown -R {{remote_user}}:{{remote_user}} {{release_path}}/node_modules', no_throw: true);
-    run('source /etc/profile.d/fnm.sh && cd {{release_path}} && CI=true pnpm install && pnpm run build');
+    run('source /etc/profile.d/fnm.sh && cd {{release_path}} && CI=true pnpm install && pnpm run build && pnpm run build:ssr');
 });
 
 desc('Publish Livewire assets');
@@ -32,10 +32,10 @@ task('deploy', [
     'artisan:event:cache',
     'artisan:migrate',
     'deploy:publish',
+    'deploy:build',
     'artisan:publish:livewire',
     'deploy:livewire:storage',
-    'deploy:supervisor',
-    'deploy:build',
+    //'deploy:supervisor',
 ]);
 
 desc('Syncs database credentials to .env');

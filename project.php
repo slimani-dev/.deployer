@@ -24,18 +24,19 @@ desc('Deploys your project');
 task('deploy', [
     'deploy:prepare',
     'deploy:vendors',
-    'env:db',
-    'artisan:storage:link',
-    'artisan:config:cache',
-    'artisan:route:cache',
-    'artisan:view:cache',
-    'artisan:event:cache',
-    'artisan:migrate',
+    //'env:db',
+    //'artisan:storage:link',
+    //'artisan:config:cache',
+    //'artisan:route:cache',
+    //'artisan:view:cache',
+    //'artisan:event:cache',
+    //'artisan:migrate',
     'deploy:publish',
     'deploy:build',
     'artisan:publish:livewire',
     'deploy:livewire:storage',
-    //'deploy:supervisor',
+    'deploy:supervisor',
+    'artisan:optimize',
 ]);
 
 desc('Syncs database credentials to .env');

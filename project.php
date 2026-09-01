@@ -13,7 +13,7 @@ task('deploy:livewire:storage', function () {
 
 desc('pnpm install and build');
 task('deploy:build', function () {
-    run('sudo chown -R {{remote_user}}:{{remote_user}} {{current_path}}/node_modules', no_throw: true);
+    run('sudo chown -R {{remote_user}}:{{remote_user}} {{current_path}}/node_modules', nothrow: true);
     run('source /etc/profile.d/fnm.sh && cd {{current_path}} && CI=true pnpm install && pnpm run build && pnpm run build:ssr');
 });
 

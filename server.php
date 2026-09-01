@@ -312,7 +312,7 @@ task('provision:website', function () {
 
     if (test("[ -f $nginxPath ]")) {
         run("echo \"$nginxConf\" > /tmp/nginx.conf.new");
-        $diff = run("diff -U5 --color=always $nginxPath /tmp/nginx.conf.new", no_throw: true);
+        $diff = run("diff -U5 --color=always $nginxPath /tmp/nginx.conf.new", nothrow: true);
 
         if (empty($diff)) {
             run('rm /tmp/nginx.conf.new');

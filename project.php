@@ -80,7 +80,7 @@ task('deploy:supervisor', function () {
 
     if (test("[ -f $workerPath ]")) {
         run("echo \"$workerConf\" > /tmp/worker.conf.new");
-        $diff = run("diff -U5 --color=always $workerPath /tmp/worker.conf.new", no_throw: true);
+        $diff = run("diff -U5 --color=always $workerPath /tmp/worker.conf.new", nothrow: true);
 
         if (empty($diff)) {
             run('rm /tmp/worker.conf.new');
